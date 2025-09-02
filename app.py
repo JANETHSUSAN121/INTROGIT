@@ -63,3 +63,4 @@ if st.button("Generar Informe PDF"):
     archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
     st.success(f"PDF generado: {archivo_pdf}")
     st.download_button("📥 Descargar PDF", archivo_pdf)
+ 
