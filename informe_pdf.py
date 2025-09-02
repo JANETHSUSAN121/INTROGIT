@@ -57,14 +57,22 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Spacer(1,5))
 
         # --- Poster ---
-        poster_url = row.get("Poster_URL")
-        if pd.notna(poster_url):
-            try:
-                img = BytesIO(requests.get(poster_url, timeout=5).content)
-                story.append(Image(img, width=200, height=300))
-                story.append(Spacer(1,5))
-            except:
-                pass
+poster_url = row.get("poster_url")  # <--- aquí el cambio
+img = None
+if pd.notna(poster_url):
+    try:
+        response = requests.get(poster_url, timeout=5)
+        if response.status_code == 200:
+            img = BytesIO(response.content)
+    except:
+        pass
+
+# Si no hay URL válida, usar una imagen por defecto (opcional)
+if img is None:
+    img = "poster_default.png"  # crea un archivo genérico en tu proyecto
+
+story.append(Image(img, width=200, height=300))
+story.append(Spacer(1,5))
 
         # --- Gráfico presupuesto vs ingresos ---
         plt.figure(figsize=(4,3))
