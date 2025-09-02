@@ -27,7 +27,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         df_filtrado["año"] = pd.NA
     df_filtrado["año"] = pd.to_numeric(df_filtrado["año"], errors="coerce")
 
-    # --- Eliminar duplicados (basado en título, director y año) ---
+    # --- Eliminar duplicados ---
     df_filtrado = df_filtrado.drop_duplicates(subset=["titulo", "director", "año"], keep="first")
 
     # --- Crear documento PDF ---
@@ -132,21 +132,3 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     os.makedirs(TEMP_DIR, exist_ok=True)
 
     return filename
-
-# -------------------------------
-# USO SUGERIDO:
-# filtros = {
-#     "Director": ", ".join(director_sel),
-#     "Género": ", ".join(genero_sel),
-#     "Estrellas": ", ".join(estrellas_sel),
-#     "Palabra clave": palabra,
-#     "Año entre": f"{año_desde} - {año_hasta}"
-# }
-# filename = generar_informe_pdf(df_filtrado, filtros)
-
-
-
-
-
-
-ChatGPT puede cometer errores. Comprueba la información importante.
