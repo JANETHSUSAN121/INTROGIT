@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from informe_pdf import generar_informe_pdf
 
-# --- Normalizar columnas ---
+# --- Función para normalizar columnas ---
 def normalizar_columnas(df):
     df = df.copy()
     df.columns = df.columns.str.strip().str.replace('\ufeff','', regex=True).str.lower()
@@ -11,7 +11,7 @@ def normalizar_columnas(df):
 st.title("🎬 App de Películas")
 
 # --- Cargar Excel interno ---
-df = pd.read_excel("datosBI.xlsx")  # <- Usar Excel, no CSV
+df = pd.read_excel("datosBI.xlsx")  # <- Usar Excel
 df = normalizar_columnas(df)
 st.write(f"Datos cargados: {len(df)} filas")
 
@@ -66,7 +66,13 @@ if st.button("Generar Informe PDF"):
     }
 
     archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
-    st.success(f"PDF generado: {archivo_pdf}")
-    st.download_button("📥 Descargar PDF", archivo_pdf)
+    st.success(f"✅ PDF generado: {archivo_pdf}")
 
-
+    # Botón para descargar PDF
+    with open(archivo_pdf, "rb") as f:
+        st.download_button(
+            label="📥 Descargar PDF",
+            data=f,
+            file_name=archivo_pdf,
+            mime="application/pdf"
+        )
