@@ -1,5 +1,3 @@
-import os
-import shutil
 import pandas as pd
 import matplotlib.pyplot as plt
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
@@ -10,17 +8,10 @@ from reportlab.lib.enums import TA_LEFT
 from io import BytesIO
 import requests
 
-TEMP_DIR = "mi_carpeta/temp_imgs"
-
 def generar_informe_pdf(df_filtrado, filtros=None):
-    # --- Preparar carpeta temporal ---
-    os.makedirs(TEMP_DIR, exist_ok=True)
-
     # --- Limpiar nombres de columna ---
     df_filtrado = df_filtrado.copy()
-    df_filtrado.columns = df_filtrado.columns.str.strip()            # eliminar espacios
-    df_filtrado.columns = df_filtrado.columns.str.replace('\ufeff','', regex=True)  # eliminar BOM
-    df_filtrado.columns = df_filtrado.columns.str.lower()            # todo a minúscula
+    df_filtrado.columns = df_filtrado.columns.str.strip().str.replace('\ufeff','', regex=True).str.lower()
 
     # --- Asegurar columna 'año' numérica ---
     if "año" not in df_filtrado.columns:
@@ -92,10 +83,11 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         else:
             plt.bar(["Presupuesto", "Ingresos"], [budget, revenue])
         plt.title("Presupuesto vs Ingresos y ROI (%)")
-        temp_path = os.path.join(TEMP_DIR, f"plot_{idx}.png")
-        plt.savefig(temp_path)
+        img_buffer = BytesIO()
+        plt.savefig(img_buffer, format='png')
         plt.close()
-        story.append(Image(temp_path, width=250, height=180))
+        img_buffer.seek(0)
+        story.append(Image(img_buffer, width=250, height=180))
         story.append(Spacer(1, 10))
 
         # --- Sinopsis ---
@@ -123,12 +115,3 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(table)
     else:
         story.append(Paragraph("No se encontraron películas con los filtros aplicados.", styles["Normal"]))
-
-    # --- Construir PDF ---
-    doc.build(story)
-
-    # --- Limpiar carpeta temporal ---
-    shutil.rmtree(TEMP_DIR)
-    os.makedirs(TEMP_DIR, exist_ok=True)
-
-    return filename
