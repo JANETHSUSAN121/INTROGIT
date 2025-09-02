@@ -13,11 +13,33 @@ else:
         # ✅ Leer archivo Excel (.xlsx)
         df = pd.read_excel(xlsx_path)
 
+        # 🔹 Forzar columnas numéricas si existen
+        numeric_cols = ["budget", "revenue", "score", "Año"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # 🔹 Limpiar columna genero
+        if "genero" in df.columns:
+            df["genero"] = (
+                df["genero"]
+                .astype(str)
+                .str.strip()
+                .str.replace(r"[{}]", "", regex=True)  # quitar llaves o símbolos
+                .str.replace(r"\s+", " ", regex=True)  # quitar espacios dobles
+            )
+
         st.title("🎬 Recomendador de Películas")
 
         # 🔹 Filtros
-        generos = st.multiselect("Elige géneros", options=df["genero"].dropna().unique() if "genero" in df.columns else [])
-        directores = st.multiselect("Elige directores", options=df["director"].dropna().unique() if "director" in df.columns else [])
+        generos = st.multiselect(
+            "Elige géneros",
+            options=df["genero"].dropna().unique() if "genero" in df.columns else []
+        )
+        directores = st.multiselect(
+            "Elige directores",
+            options=df["director"].dropna().unique() if "director" in df.columns else []
+        )
         palabra = st.text_input("Buscar palabra clave en sinopsis")
         fecha_ini = st.number_input("Año desde", min_value=1900, max_value=2100, value=1900)
         fecha_fin = st.number_input("Año hasta", min_value=1900, max_value=2100, value=2100)
@@ -31,8 +53,11 @@ else:
         if palabra and "overview" in peliculas.columns:
             peliculas = peliculas[peliculas["overview"].str.contains(palabra, case=False, na=False)]
         if "Año" in peliculas.columns:
-            peliculas["Año"] = pd.to_numeric(peliculas["Año"], errors="coerce")
-            peliculas = peliculas[(peliculas["Año"].notna()) & (peliculas["Año"] >= fecha_ini) & (peliculas["Año"] <= fecha_fin)]
+            peliculas = peliculas[
+                (peliculas["Año"].notna()) &
+                (peliculas["Año"] >= fecha_ini) &
+                (peliculas["Año"] <= fecha_fin)
+            ]
 
         # 🔹 Filtro por película específica (opcional)
         if not peliculas.empty and "titulo" in peliculas.columns:
@@ -41,7 +66,7 @@ else:
             if pelicula_seleccionada != "(Todas)":
                 peliculas = peliculas[peliculas["titulo"] == pelicula_seleccionada]
 
-        # 🔹 Calcular ROI y ranking
+        # 🔹 Calcular ROI
         if "budget" in peliculas.columns and "revenue" in peliculas.columns:
             peliculas["ROI"] = peliculas.apply(
                 lambda x: (x["revenue"] - x["budget"]) / x["budget"] if pd.notna(x["budget"]) and x["budget"] > 0 else None,
@@ -50,7 +75,7 @@ else:
         else:
             peliculas["ROI"] = None
 
-        # Ranking: ROI si existe, si no usar score
+        # 🔹 Ranking: ROI si existe, si no usar score
         if "score" in peliculas.columns:
             peliculas["ranking"] = peliculas.apply(
                 lambda x: x["ROI"] if pd.notna(x["ROI"]) else x.get("score", 0),
@@ -58,6 +83,9 @@ else:
             )
         else:
             peliculas["ranking"] = peliculas["ROI"]
+
+        # ✅ Forzar ranking a numérico
+        peliculas["ranking"] = pd.to_numeric(peliculas["ranking"], errors="coerce")
 
         # 🔹 Seleccionar Top 10
         peliculas_top = peliculas.sort_values(by="ranking", ascending=False).head(10)
@@ -78,3 +106,5 @@ else:
 
     except Exception as e:
         st.error(f"❌ Error al cargar o procesar el archivo xlsx : {e}")
+    
+     
