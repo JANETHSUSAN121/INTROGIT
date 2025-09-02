@@ -83,12 +83,6 @@ def generar_informe_pdf(df_filtrado, filtros=None):
             except:
                 pass
 
-        # Poster por defecto si no hay imagen válida
-        if img_path is None:
-            default_img_path = "poster_default.jpg"
-            if os.path.exists(default_img_path):
-                img_path = default_img_path
-
         # Solo agregar imagen si hay algo válido
         if img_path is not None:
             story.append(Image(img_path, width=200, height=300))
