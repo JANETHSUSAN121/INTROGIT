@@ -7,15 +7,20 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.enums import TA_LEFT
 from io import BytesIO
 import requests
+import os
 
 def generar_informe_pdf(df_filtrado, filtros=None):
-    # --- Normalizar columnas ---
+    # --- Limpiar espacios y BOM, pero NO cambiar mayúsculas ---
     df_filtrado = df_filtrado.copy()
-    df_filtrado.columns = df_filtrado.columns.str.strip().str.replace('\ufeff','', regex=True).str.lower()
-    if "año" not in df_filtrado.columns:
-        df_filtrado["año"] = pd.NA
-    df_filtrado["año"] = pd.to_numeric(df_filtrado["año"], errors="coerce")
-    df_filtrado = df_filtrado.drop_duplicates(subset=["titulo","director","año"], keep="first")
+    df_filtrado.columns = df_filtrado.columns.str.strip().str.replace('\ufeff','', regex=True)
+
+    # --- Asegurar columna 'Año' ---
+    if "Año" not in df_filtrado.columns:
+        df_filtrado["Año"] = pd.NA
+    df_filtrado["Año"] = pd.to_numeric(df_filtrado["Año"], errors="coerce")
+
+    # --- Eliminar duplicados ---
+    df_filtrado = df_filtrado.drop_duplicates(subset=["titulo","director","Año"], keep="first")
 
     # --- Crear documento PDF ---
     filename = "Informe_Peliculas.pdf"
@@ -44,7 +49,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     # --- Detalle de cada película ---
     for idx, row in df_filtrado.iterrows():
         story.append(Paragraph(f"🎬 {row.get('titulo','Sin título')}", estilo_subtitulo))
-        story.append(Paragraph(f"Director: {row.get('director','N/A')} | Año: {row.get('año','N/A')}", estilo_texto))
+        story.append(Paragraph(f"Director: {row.get('director','N/A')} | Año: {row.get('Año','N/A')}", estilo_texto))
         story.append(Paragraph(f"Género: {row.get('genero','N/A')} | Estrellas: {row.get('estrellas','N/A')}", estilo_texto))
         story.append(Spacer(1,8))
 
@@ -57,22 +62,24 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Spacer(1,5))
 
         # --- Poster ---
-poster_url = row.get("poster_url")  # <--- aquí el cambio
-img = None
-if pd.notna(poster_url):
-    try:
-        response = requests.get(poster_url, timeout=5)
-        if response.status_code == 200:
-            img = BytesIO(response.content)
-    except:
-        pass
+        poster_url = row.get("Poster_URL")  # columna exacta
+        img = None
+        if pd.notna(poster_url):
+            try:
+                response = requests.get(poster_url, timeout=5)
+                if response.status_code == 200:
+                    img = BytesIO(response.content)
+            except:
+                pass
 
-# Si no hay URL válida, usar una imagen por defecto (opcional)
-if img is None:
-    img = "poster_default.png"  # crea un archivo genérico en tu proyecto
+        # Imagen por defecto si no hay poster válido
+        if img is None:
+            default_img = "poster_default.png"  # coloca un archivo genérico en tu proyecto
+            if os.path.exists(default_img):
+                img = default_img
 
-story.append(Image(img, width=200, height=300))
-story.append(Spacer(1,5))
+        story.append(Image(img, width=200, height=300))
+        story.append(Spacer(1,5))
 
         # --- Gráfico presupuesto vs ingresos ---
         plt.figure(figsize=(4,3))
@@ -99,7 +106,7 @@ story.append(Spacer(1,5))
             data.append([
                 row.get("titulo",""),
                 row.get("director",""),
-                row.get("año",""),
+                row.get("Año",""),
                 row.get("genero",""),
                 row.get("score","")
             ])
@@ -117,3 +124,8 @@ story.append(Spacer(1,5))
     # --- Construir PDF ---
     doc.build(story)
     return filename
+   
+           
+
+    
+     
