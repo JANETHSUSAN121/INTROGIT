@@ -11,9 +11,7 @@ st.write("Filtra películas y genera informes en PDF.")
 xlsx_path = "datosBI.xlsx"
 df = pd.read_excel(xlsx_path)
 
-if archivo is not None:
-    try:
-        df = pd.read_excel(archivo)
+
 
         # --- Normalización de columnas problemáticas ---
         if "Año" in df.columns:
