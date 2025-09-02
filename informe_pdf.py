@@ -57,7 +57,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Spacer(1,5))
 
         # --- Poster ---
-        poster_url = row.get("poster-url")
+        poster_url = row.get("Poster_URL")
         if pd.notna(poster_url):
             try:
                 img = BytesIO(requests.get(poster_url, timeout=5).content)
