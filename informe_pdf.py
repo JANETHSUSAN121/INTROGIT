@@ -8,6 +8,7 @@ from reportlab.lib.enums import TA_LEFT
 import requests
 import os
 import shutil
+from io import BytesIO
 
 TEMP_DIR = "temp_posters"
 
@@ -24,9 +25,14 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         df_filtrado["Año"] = pd.NA
     df_filtrado["Año"] = pd.to_numeric(df_filtrado["Año"], errors="coerce")
 
-    # --- Limpiar columna 'genero' de caracteres no deseados ---
+    # --- Limpiar columna 'genero' de llaves y espacios ---
     if "genero" in df_filtrado.columns:
-        df_filtrado["genero"] = df_filtrado["genero"].astype(str).str.strip().str.rstrip("}")
+        df_filtrado["genero"] = (
+            df_filtrado["genero"]
+            .astype(str)
+            .str.strip()     # quita espacios al inicio y final
+            .str.strip("{}") # quita cualquier { o } al inicio o final
+        )
 
     # --- Eliminar duplicados ---
     df_filtrado = df_filtrado.drop_duplicates(subset=["titulo","director","Año"], keep="first")
@@ -95,7 +101,6 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         else:
             plt.bar(["Presupuesto","Ingresos"], [budget,revenue])
         plt.title("Presupuesto vs Ingresos y ROI (%)")
-        from io import BytesIO
         img_buf = BytesIO()
         plt.savefig(img_buf, format="png")
         plt.close()
@@ -136,4 +141,9 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     shutil.rmtree(TEMP_DIR, ignore_errors=True)
 
     return filename
- 
+
+
+
+
+
+ChatGPT puede cometer errores. Comprueba la información importante.
