@@ -16,20 +16,19 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     # --- Preparar carpeta temporal ---
     os.makedirs(TEMP_DIR, exist_ok=True)
 
-    # --- Limpiar nombres de columnas ---
+    # --- Limpiar nombres de columna ---
     df_filtrado = df_filtrado.copy()
-    df_filtrado.columns = df_filtrado.columns.str.strip()  # eliminar espacios
-    df_filtrado.columns = df_filtrado.columns.str.replace('\ufeff', '', regex=True)  # eliminar BOM
-    df_filtrado.columns = df_filtrado.columns.str.title()  # estandarizar mayúscula inicial
+    df_filtrado.columns = df_filtrado.columns.str.strip()            # eliminar espacios
+    df_filtrado.columns = df_filtrado.columns.str.replace('\ufeff','', regex=True)  # eliminar BOM
+    df_filtrado.columns = df_filtrado.columns.str.lower()            # todo a minúscula
 
-    # --- Asegurar columna Año numérica ---
-    if "Año" in df_filtrado.columns:
-        df_filtrado["Año"] = pd.to_numeric(df_filtrado["Año"], errors="coerce")
-    else:
-        df_filtrado["Año"] = pd.NA
+    # --- Asegurar columna 'año' numérica ---
+    if "año" not in df_filtrado.columns:
+        df_filtrado["año"] = pd.NA
+    df_filtrado["año"] = pd.to_numeric(df_filtrado["año"], errors="coerce")
 
-    # --- Eliminar duplicados ---
-    df_filtrado = df_filtrado.drop_duplicates(subset=["Titulo", "Director", "Año"], keep="first")
+    # --- Eliminar duplicados (basado en título, director y año) ---
+    df_filtrado = df_filtrado.drop_duplicates(subset=["titulo", "director", "año"], keep="first")
 
     # --- Crear documento PDF ---
     filename = "Informe_Peliculas.pdf"
@@ -59,14 +58,14 @@ def generar_informe_pdf(df_filtrado, filtros=None):
 
     # --- Detalle de películas ---
     for idx, row in df_filtrado.iterrows():
-        story.append(Paragraph(f"🎬 {row.get('Titulo', 'Sin título')}", estilo_subtitulo))
-        story.append(Paragraph(f"Director: {row.get('Director', 'N/A')} | Año: {row.get('Año', 'N/A')}", estilo_texto))
-        story.append(Paragraph(f"Género: {row.get('Genero', 'N/A')} | Estrellas: {row.get('Estrellas', 'N/A')}", estilo_texto))
+        story.append(Paragraph(f"🎬 {row.get('titulo', 'Sin título')}", estilo_subtitulo))
+        story.append(Paragraph(f"Director: {row.get('director', 'N/A')} | Año: {row.get('año', 'N/A')}", estilo_texto))
+        story.append(Paragraph(f"Género: {row.get('genero', 'N/A')} | Estrellas: {row.get('estrellas', 'N/A')}", estilo_texto))
         story.append(Spacer(1, 8))
 
-        # --- Presupuesto, ingresos, ROI ---
-        budget = row.get("Budget", 0) or 0
-        revenue = row.get("Revenue", 0) or 0
+        # --- Presupuesto, ingresos y ROI ---
+        budget = row.get("budget", 0) or 0
+        revenue = row.get("revenue", 0) or 0
         roi = (revenue - budget) / budget if budget > 0 else None
 
         texto_numeros = (
@@ -77,7 +76,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Spacer(1, 5))
 
         # --- Poster ---
-        poster_url = row.get("Poster-Url")
+        poster_url = row.get("poster-url")
         if pd.notna(poster_url):
             try:
                 img = BytesIO(requests.get(poster_url, timeout=5).content)
@@ -100,19 +99,19 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Spacer(1, 10))
 
         # --- Sinopsis ---
-        story.append(Paragraph(f"📖 Sinopsis: {row.get('Overview', 'No disponible')}", estilo_texto))
+        story.append(Paragraph(f"📖 Sinopsis: {row.get('overview', 'No disponible')}", estilo_texto))
         story.append(PageBreak())
 
-    # --- Tabla de resumen ---
+    # --- Tabla resumen ---
     if not df_filtrado.empty:
         data = [["Título", "Director", "Año", "Género", "Score"]]
         for _, row in df_filtrado.iterrows():
             data.append([
-                row.get("Titulo", ""),
-                row.get("Director", ""),
-                row.get("Año", ""),
-                row.get("Genero", ""),
-                row.get("Score", ""),
+                row.get("titulo", ""),
+                row.get("director", ""),
+                row.get("año", ""),
+                row.get("genero", ""),
+                row.get("score", ""),
             ])
         table = Table(data, repeatRows=1)
         table.setStyle(TableStyle([
@@ -136,7 +135,6 @@ def generar_informe_pdf(df_filtrado, filtros=None):
 
 # -------------------------------
 # USO SUGERIDO:
-
 # filtros = {
 #     "Director": ", ".join(director_sel),
 #     "Género": ", ".join(genero_sel),
@@ -145,3 +143,10 @@ def generar_informe_pdf(df_filtrado, filtros=None):
 #     "Año entre": f"{año_desde} - {año_hasta}"
 # }
 # filename = generar_informe_pdf(df_filtrado, filtros)
+
+
+
+
+
+
+ChatGPT puede cometer errores. Comprueba la información importante.
