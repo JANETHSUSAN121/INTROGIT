@@ -21,7 +21,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     # --- Eliminar duplicados ---
     df_filtrado = df_filtrado.drop_duplicates(subset=["titulo", "director", "año"], keep="first")
 
-    # --- Crear documento PDF ---
+    # --- Crear PDF ---
     filename = "Informe_Peliculas.pdf"
     doc = SimpleDocTemplate(filename, pagesize=A4)
     story = []
@@ -35,11 +35,11 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         "Numeros", parent=styles["Normal"], fontSize=12, leading=16, spaceAfter=8, alignment=TA_LEFT
     )
 
-    # --- Título del informe ---
+    # --- Título ---
     story.append(Paragraph("📊 Informe de Películas - Top Filtradas", estilo_titulo))
     story.append(Spacer(1, 20))
 
-    # --- Filtros aplicados ---
+    # --- Filtros ---
     if filtros:
         story.append(Paragraph("Filtros aplicados:", estilo_subtitulo))
         for clave, val in filtros.items():
@@ -54,7 +54,6 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Paragraph(f"Género: {row.get('genero', 'N/A')} | Estrellas: {row.get('estrellas', 'N/A')}", estilo_texto))
         story.append(Spacer(1, 8))
 
-        # --- Presupuesto, ingresos y ROI ---
         budget = row.get("budget", 0) or 0
         revenue = row.get("revenue", 0) or 0
         roi = (revenue - budget) / budget if budget > 0 else None
@@ -115,3 +114,6 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(table)
     else:
         story.append(Paragraph("No se encontraron películas con los filtros aplicados.", styles["Normal"]))
+
+    doc.build(story)
+    return filename
