@@ -8,12 +8,12 @@ def normalizar_columnas(df):
     df.columns = df.columns.str.strip().str.replace('\ufeff','', regex=True).str.lower()
     return df
 
+# --- Título de la app ---
 st.title("🎬 App de Películas")
 
-# --- Cargar Excel directamente ---
+# --- Cargar Excel interno ---
 df = pd.read_excel("datosBI.xlsx")
 df = normalizar_columnas(df)
-
 st.write(f"Datos cargados: {len(df)} filas")
 
 # --- Selección de filtros ---
@@ -27,7 +27,7 @@ año_desde, año_hasta = st.slider(
     (int(df["año"].min()), int(df["año"].max()))
 )
 
-# --- Filtrar DataFrame ---
+# --- Filtrar DataFrame según filtros ---
 df_filtrado = df.copy()
 if directores:
     df_filtrado = df_filtrado[df_filtrado["director"].isin(directores)]
@@ -50,7 +50,7 @@ df_filtrado = df_filtrado[
 
 st.write(f"Se encontraron {len(df_filtrado)} películas con los filtros aplicados.")
 
-# --- Generar PDF ---
+# --- Botón para generar PDF ---
 if st.button("Generar Informe PDF"):
     filtros = {
         "Director": ", ".join(directores) if directores else "Todos",
@@ -63,4 +63,4 @@ if st.button("Generar Informe PDF"):
     archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
     st.success(f"PDF generado: {archivo_pdf}")
     st.download_button("📥 Descargar PDF", archivo_pdf)
- 
+    
