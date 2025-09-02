@@ -1,25 +1,20 @@
-
 import os
 import streamlit as st
 import pandas as pd
 from informe_pdf import generar_informe_pdf
-
 # 📂 Ruta del Excel
 xlsx_path = "datosBI.xlsx"
-
 if not os.path.exists(xlsx_path):
     st.error(f"❌ No se encontró {xlsx_path}. Asegúrate de subirlo al repo.")
 else:
     try:
         # ✅ Leer archivo Excel (.xlsx)
         df = pd.read_excel(xlsx_path)
-
-        # 🔹 Forzar columnas numéricas si existen
+       # 🔹 Forzar columnas numéricas si existen
         numeric_cols = ["budget", "revenue", "score", "Año"]
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
-
         # 🔹 Limpiar columna genero
         if "genero" in df.columns:
             df["genero"] = (
