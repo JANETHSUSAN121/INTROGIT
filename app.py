@@ -28,6 +28,8 @@ año_desde, año_hasta = st.slider(
 
 # --- Filtrar DataFrame ---
 df_filtrado = df.copy()
+# Eliminar duplicados
+df_filtrado = df_filtrado.drop_duplicates(subset=["titulo","director","año"], keep="first")
 if directores:
     df_filtrado = df_filtrado[df_filtrado["director"].isin(directores)]
 if generos:
