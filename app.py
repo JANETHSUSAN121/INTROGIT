@@ -39,8 +39,6 @@ if palabra:
         df_filtrado["titulo"].str.contains(palabra, case=False, na=False) |
         df_filtrado["overview"].str.contains(palabra, case=False, na=False)
     ]
-
-# --- Filtrar rango de años ---
 df_filtrado = df_filtrado[
     df_filtrado["año"].notna() &
     (df_filtrado["año"] >= año_desde) &
@@ -48,6 +46,14 @@ df_filtrado = df_filtrado[
 ]
 
 st.write(f"Se encontraron {len(df_filtrado)} películas con los filtros aplicados.")
+
+# --- Mostrar lista de películas filtradas ---
+st.subheader("🎬 Películas filtradas")
+if not df_filtrado.empty:
+    for idx, row in df_filtrado.iterrows():
+        st.markdown(f"**{row['titulo']}** ({int(row['año']) if pd.notna(row['año']) else 'N/A'}) - Director: {row['director']}")
+else:
+    st.info("No se encontraron películas con los filtros aplicados.")
 
 # --- Botón generar PDF ---
 if st.button("Generar Informe PDF"):
@@ -62,3 +68,5 @@ if st.button("Generar Informe PDF"):
     archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
     st.success(f"PDF generado: {archivo_pdf}")
     st.download_button("📥 Descargar PDF", archivo_pdf)
+
+
