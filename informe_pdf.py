@@ -10,7 +10,7 @@ import requests
 import os
 
 def generar_informe_pdf(df_filtrado, filtros=None):
-    # --- Limpiar espacios y BOM, pero NO cambiar mayúsculas ---
+    # --- Limpiar espacios y BOM, sin cambiar mayúsculas ---
     df_filtrado = df_filtrado.copy()
     df_filtrado.columns = df_filtrado.columns.str.strip().str.replace('\ufeff','', regex=True)
 
@@ -64,6 +64,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         # --- Poster ---
         poster_url = row.get("Poster_URL")  # columna exacta
         img = None
+
         if pd.notna(poster_url):
             try:
                 response = requests.get(poster_url, timeout=5)
@@ -74,12 +75,14 @@ def generar_informe_pdf(df_filtrado, filtros=None):
 
         # Imagen por defecto si no hay poster válido
         if img is None:
-            default_img = "poster_default.png"  # coloca un archivo genérico en tu proyecto
-            if os.path.exists(default_img):
-                img = default_img
+            default_img_path = "poster_default.png"
+            if os.path.exists(default_img_path):
+                img = default_img_path
 
-        story.append(Image(img, width=200, height=300))
-        story.append(Spacer(1,5))
+        # Solo agregar imagen si hay algo válido
+        if img is not None:
+            story.append(Image(img, width=200, height=300))
+            story.append(Spacer(1,5))
 
         # --- Gráfico presupuesto vs ingresos ---
         plt.figure(figsize=(4,3))
@@ -124,8 +127,3 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     # --- Construir PDF ---
     doc.build(story)
     return filename
-   
-           
-
-    
-     
