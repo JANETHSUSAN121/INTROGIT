@@ -69,13 +69,16 @@ def generar_informe_pdf(df_filtrado, filtros=None):
             try:
                 response = requests.get(poster_url, timeout=5)
                 if response.status_code == 200:
-                    img = BytesIO(response.content)
+            # Guardar temporalmente la imagen como .jpg
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                tmp_file.write(response.content)
+                img_path = tmp_file.name
             except:
                 pass
 
         # Imagen por defecto si no hay poster válido
         if img is None:
-            default_img_path = "poster_default.png"
+            default_img_path = "poster_default.jpg"
             if os.path.exists(default_img_path):
                 img = default_img_path
 
