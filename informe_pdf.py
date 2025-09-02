@@ -8,6 +8,7 @@ from reportlab.lib.enums import TA_LEFT
 from io import BytesIO
 import requests
 import os
+import tempfile
 
 def generar_informe_pdf(df_filtrado, filtros=None):
     # --- Limpiar espacios y BOM, sin cambiar mayúsculas ---
@@ -32,7 +33,9 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     estilo_titulo = styles["Title"]
     estilo_subtitulo = styles["Heading2"]
     estilo_texto = styles["Normal"]
-    estilo_numeros = ParagraphStyle("Numeros", parent=styles["Normal"], fontSize=12, leading=16, spaceAfter=8, alignment=TA_LEFT)
+    estilo_numeros = ParagraphStyle(
+        "Numeros", parent=styles["Normal"], fontSize=12, leading=16, spaceAfter=8, alignment=TA_LEFT
+    )
 
     # --- Título del informe ---
     story.append(Paragraph("📊 Informe de Películas - Top Filtradas", estilo_titulo))
@@ -62,29 +65,28 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Spacer(1,5))
 
         # --- Poster ---
-        poster_url = row.get("Poster_URL")  # columna exacta
-        img = None
+        poster_url = row.get("Poster_URL")
+        img_path = None
 
         if pd.notna(poster_url):
             try:
                 response = requests.get(poster_url, timeout=5)
                 if response.status_code == 200:
-            # Guardar temporalmente la imagen como .jpg
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-                tmp_file.write(response.content)
-                img_path = tmp_file.name
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+                        tmp_file.write(response.content)
+                        img_path = tmp_file.name
             except:
                 pass
 
         # Imagen por defecto si no hay poster válido
-        if img is None:
+        if img_path is None:
             default_img_path = "poster_default.jpg"
             if os.path.exists(default_img_path):
-                img = default_img_path
+                img_path = default_img_path
 
         # Solo agregar imagen si hay algo válido
-        if img is not None:
-            story.append(Image(img, width=200, height=300))
+        if img_path is not None:
+            story.append(Image(img_path, width=200, height=300))
             story.append(Spacer(1,5))
 
         # --- Gráfico presupuesto vs ingresos ---
