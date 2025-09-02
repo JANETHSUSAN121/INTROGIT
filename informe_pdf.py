@@ -5,7 +5,6 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.enums import TA_LEFT
-from io import BytesIO
 import requests
 import os
 import shutil
@@ -24,6 +23,10 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     if "Año" not in df_filtrado.columns:
         df_filtrado["Año"] = pd.NA
     df_filtrado["Año"] = pd.to_numeric(df_filtrado["Año"], errors="coerce")
+
+    # --- Limpiar columna 'genero' de caracteres no deseados ---
+    if "genero" in df_filtrado.columns:
+        df_filtrado["genero"] = df_filtrado["genero"].astype(str).str.strip().str.rstrip("}")
 
     # --- Eliminar duplicados ---
     df_filtrado = df_filtrado.drop_duplicates(subset=["titulo","director","Año"], keep="first")
@@ -69,22 +72,19 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         story.append(Paragraph(texto_numeros, estilo_numeros))
         story.append(Spacer(1,5))
 
-        # --- Poster ---
+        # --- Poster JPG ---
         poster_url = row.get("Poster_URL")
         img_path = None
-
         if pd.notna(poster_url):
             try:
-                response = requests.get(poster_url, timeout=5)
-                if response.status_code == 200:
+                r = requests.get(poster_url, timeout=5)
+                if r.status_code == 200:
                     img_path = os.path.join(TEMP_DIR, f"poster_{idx}.jpg")
                     with open(img_path, "wb") as f:
-                        f.write(response.content)
+                        f.write(r.content)
             except:
                 pass
-
-        # Solo agregar imagen si hay algo válido
-        if img_path is not None:
+        if img_path and os.path.exists(img_path):
             story.append(Image(img_path, width=200, height=300))
             story.append(Spacer(1,5))
 
@@ -95,6 +95,7 @@ def generar_informe_pdf(df_filtrado, filtros=None):
         else:
             plt.bar(["Presupuesto","Ingresos"], [budget,revenue])
         plt.title("Presupuesto vs Ingresos y ROI (%)")
+        from io import BytesIO
         img_buf = BytesIO()
         plt.savefig(img_buf, format="png")
         plt.close()
@@ -135,3 +136,4 @@ def generar_informe_pdf(df_filtrado, filtros=None):
     shutil.rmtree(TEMP_DIR, ignore_errors=True)
 
     return filename
+ 
