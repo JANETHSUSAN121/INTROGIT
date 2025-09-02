@@ -12,6 +12,7 @@ Original file is located at
 import streamlit as st
 import pandas as pd
 
+
 # URL raw de tu Excel en GitHub
 url = "https://github.com/JANETHSUSAN121/INTROGIT/raw/main/profesiones_jeroglificos.xlsx"
 
@@ -61,7 +62,6 @@ if st.session_state["seleccion"] is not None:
     if "Imagen" in df.columns and pd.notna(row["Imagen"]):
         detalles_col.image(row["Imagen"], use_column_width=True)
 
-streamlit run jeroglificos.ipynb
 
 # Commented out IPython magic to ensure Python compatibility.
 # %pip install streamlit
