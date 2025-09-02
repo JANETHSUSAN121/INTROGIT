@@ -1,0 +1,6 @@
+let
+    Source = Excel.CurrentWorkbook(){[Name="tablapais"]}[Content],
+    #"Lowercased Text" = Table.TransformColumns(Source,{{"pais", Text.Lower, type text}}),
+    pais = #"Lowercased Text"{0}[pais]
+in
+    pais
