@@ -8,10 +8,15 @@ from reportlab.lib.enums import TA_LEFT
 from io import BytesIO
 import requests
 import os
-import tempfile
+import shutil
+
+TEMP_DIR = "temp_posters"
 
 def generar_informe_pdf(df_filtrado, filtros=None):
-    # --- Limpiar espacios y BOM, sin cambiar mayúsculas ---
+    # --- Preparar carpeta temporal ---
+    os.makedirs(TEMP_DIR, exist_ok=True)
+
+    # --- Normalizar columnas ---
     df_filtrado = df_filtrado.copy()
     df_filtrado.columns = df_filtrado.columns.str.strip().str.replace('\ufeff','', regex=True)
 
@@ -72,13 +77,13 @@ def generar_informe_pdf(df_filtrado, filtros=None):
             try:
                 response = requests.get(poster_url, timeout=5)
                 if response.status_code == 200:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-                        tmp_file.write(response.content)
-                        img_path = tmp_file.name
+                    img_path = os.path.join(TEMP_DIR, f"poster_{idx}.jpg")
+                    with open(img_path, "wb") as f:
+                        f.write(response.content)
             except:
                 pass
 
-        # Imagen por defecto si no hay poster válido
+        # Poster por defecto si no hay imagen válida
         if img_path is None:
             default_img_path = "poster_default.jpg"
             if os.path.exists(default_img_path):
@@ -131,4 +136,8 @@ def generar_informe_pdf(df_filtrado, filtros=None):
 
     # --- Construir PDF ---
     doc.build(story)
+
+    # --- Limpiar carpeta temporal ---
+    shutil.rmtree(TEMP_DIR, ignore_errors=True)
+
     return filename
