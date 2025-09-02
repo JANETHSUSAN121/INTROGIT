@@ -1,17 +1,17 @@
+import os
 import streamlit as st
 import pandas as pd
 from informe_pdf import generar_informe_pdf
 
-st.set_page_config(page_title="Explorador de Películas", layout="wide")
-
-st.title("🎬 Explorador de Películas")
-st.write("Filtra películas y genera informes en PDF.")
-
-# --- Cargar archivo ---
+# 📂 Ruta del Excel en tu repo
 xlsx_path = "datosBI.xlsx"
-df = pd.read_excel(xlsx_path)
 
-
+if not os.path.exists(xlsx_path):
+    st.error(f"❌ No se encontró {xlsx_path}. Asegúrate de subirlo al repo.")
+else:
+    try:
+        # ✅ Leer archivo Excel
+        df = pd.read_excel(xlsx_path)
 
         # --- Normalización de columnas problemáticas ---
         if "Año" in df.columns:
@@ -30,9 +30,10 @@ df = pd.read_excel(xlsx_path)
             df["genero"] = df["genero"].astype(str).str.replace(r"[{}]", "", regex=True).str.strip()
 
         # --- Filtros ---
-        directores = df["director"].dropna().unique().tolist() if "director" in df.columns else []
-        director_sel = st.multiselect("Elige directores", directores)
+        st.title("🎬 Recomendador de Películas")
 
+        generos = st.multiselect("Elige géneros", df["genero"].dropna().unique().tolist() if "genero" in df.columns else [])
+        directores = st.multiselect("Elige directores", df["director"].dropna().unique().tolist() if "director" in df.columns else [])
         palabra = st.text_input("Buscar palabra clave en sinopsis")
 
         año_min = int(df["Año"].min()) if "Año" in df.columns else 1900
@@ -43,25 +44,6 @@ df = pd.read_excel(xlsx_path)
 
         # --- Aplicar filtros ---
         df_filtrado = df.copy()
+       
 
-        if director_sel:
-            df_filtrado = df_filtrado[df_filtrado["director"].isin(director_sel)]
-
-        if palabra:
-            df_filtrado = df_filtrado[df_filtrado["overview"].str.contains(palabra, case=False, na=False)]
-
-        df_filtrado = df_filtrado[(df_filtrado["Año"] >= año_desde) & (df_filtrado["Año"] <= año_hasta)]
-
-        # --- Mostrar resultados ---
-        st.write("### 📊 Resultados", df_filtrado)
-
-        if not df_filtrado.empty:
-            if st.button("📑 Generar Informe PDF"):
-                filename = generar_informe_pdf(df_filtrado)
-                with open(filename, "rb") as f:
-                    st.download_button("⬇️ Descargar Informe PDF", f, file_name=filename)
-
-    except Exception as e:
-        st.error(f"❌ Error al cargar o procesar el archivo xlsx: {e}")
-    
-     
+      
