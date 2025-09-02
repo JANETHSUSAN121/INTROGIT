@@ -1,101 +1,69 @@
 import streamlit as st
 import pandas as pd
 from informe_pdf import generar_informe_pdf
-# --- Cargar datos ---
-@st.cache_data
-def cargar_datos():
-    df = pd.read_excel("datosBI.xlsx")
- # Normalización básica de columnas
-    if "Año" in df.columns:
-        df["Año"] = pd.to_numeric(df["Año"], errors="coerce")
-        df = df.dropna(subset=["Año"])
-        df["Año"] = df["Año"].astype(int)
 
-    if "budget" in df.columns:
-        df["budget"] = pd.to_numeric(df["budget"], errors="coerce")
-
-    if "revenue" in df.columns:
-        df["revenue"] = pd.to_numeric(df["revenue"], errors="coerce")
-
-    if "genero" in df.columns:
-        df["genero"] = (
-            df["genero"]
-            .astype(str)
-            .str.replace(r"[{}]", "", regex=True)
-            .str.strip()
-        )
-
-    if "Director" in df.columns:
-        df["Director"] = df["Director"].astype(str).str.strip()
-
-    if "estrellas" in df.columns:
-        df["estrellas"] = df["estrellas"].astype(str).str.strip()
-
+# --- Función para normalizar columnas ---
+def normalizar_columnas(df):
+    df = df.copy()
+    df.columns = df.columns.str.strip().str.replace('\ufeff','', regex=True).str.lower()
     return df
 
+# --- Cargar datos ---
+@st.cache_data
+def cargar_datos(path):
+    df = pd.read_csv(path)
+    df = normalizar_columnas(df)
+    return df
 
-# --- Interfaz principal ---
-st.title("🎬 Análisis de Películas")
+# --- Path a tu CSV ---
+df = cargar_datos("peliculas.csv")
 
-df = cargar_datos()
+st.title("🎬 App de Películas")
 
-# --- Filtros ---
-directores = sorted(df["Director"].dropna().unique().tolist()) if "Director" in df.columns else []
-generos = sorted(df["genero"].dropna().unique().tolist()) if "genero" in df.columns else []
-estrellas = sorted(df["estrellas"].dropna().unique().tolist()) if "estrellas" in df.columns else []
+# --- Selección de filtros ---
+directores = st.multiselect("Selecciona Director(es):", options=df["director"].dropna().unique())
+generos = st.multiselect("Selecciona Género(s):", options=df["genero"].dropna().unique())
+estrellas = st.multiselect("Selecciona Estrellas:", options=df["estrellas"].dropna().unique())
+palabra = st.text_input("Palabra clave en título o sinopsis:")
+año_desde, año_hasta = st.slider("Rango de años:", int(df["año"].min()), int(df["año"].max()), (int(df["año"].min()), int(df["año"].max())))
 
-director_sel = st.multiselect("🎥 Elige directores", directores)
-genero_sel = st.multiselect("📚 Elige géneros", generos)
-estrella_sel = st.multiselect("⭐ Elige estrellas", estrellas)
-
-palabra = st.text_input("🔍 Buscar palabra clave en sinopsis")
-
-año_min = int(df["Año"].min()) if "Año" in df.columns else 1900
-año_max = int(df["Año"].max()) if "Año" in df.columns else 2100
-año_desde = st.number_input("Año desde", min_value=1900, max_value=2100, value=año_min)
-año_hasta = st.number_input("Año hasta", min_value=1900, max_value=2100, value=año_max)
-
-# --- Aplicar filtros ---
+# --- Filtrar DataFrame ---
 df_filtrado = df.copy()
 
-if director_sel:
-    df_filtrado = df_filtrado[
-        df_filtrado["Director"].str.lower().str.contains("|".join([d.lower() for d in director_sel]))
-    ]
+if directores:
+    df_filtrado = df_filtrado[df_filtrado["director"].isin(directores)]
 
-if genero_sel:
-    df_filtrado = df_filtrado[
-        df_filtrado["genero"].str.lower().str.contains("|".join([g.lower() for g in genero_sel]))
-    ]
+if generos:
+    df_filtrado = df_filtrado[df_filtrado["genero"].isin(generos)]
 
-if estrella_sel:
-    df_filtrado = df_filtrado[
-        df_filtrado["estrellas"].str.lower().str.contains("|".join([e.lower() for e in estrella_sel]))
-    ]
+if estrellas:
+    df_filtrado = df_filtrado[df_filtrado["estrellas"].isin(estrellas)]
 
 if palabra:
     df_filtrado = df_filtrado[
-        df_filtrado["overview"].str.lower().str.contains(palabra.lower(), na=False)
+        df_filtrado["titulo"].str.contains(palabra, case=False, na=False) |
+        df_filtrado["overview"].str.contains(palabra, case=False, na=False)
     ]
 
-df_filtrado = df_filtrado[(df_filtrado["Año"] >= año_desde) & (df_filtrado["Año"] <= año_hasta)]
+# --- Filtrar rango de años de forma segura ---
+df_filtrado = df_filtrado[
+    df_filtrado["año"].notna() &
+    (df_filtrado["año"] >= año_desde) &
+    (df_filtrado["año"] <= año_hasta)
+]
 
-# --- Eliminar duplicados ---
-df_filtrado = df_filtrado.drop_duplicates(subset=["titulo", "Director", "Año"], keep="first")
+st.write(f"Se encontraron {len(df_filtrado)} películas con los filtros aplicados.")
 
-# --- Botón para mostrar resultados ---
-if st.button("👀 Ver películas filtradas"):
-    if not df_filtrado.empty:
-        st.write("### Resultados filtrados")
-        st.dataframe(df_filtrado[["titulo", "Director", "Año", "genero", "score"]])
-    else:
-        st.warning("⚠️ No se encontraron películas con esos filtros.")
+# --- Generar PDF ---
+if st.button("Generar Informe PDF"):
+    filtros = {
+        "Director": ", ".join(directores) if directores else "Todos",
+        "Género": ", ".join(generos) if generos else "Todos",
+        "Estrellas": ", ".join(estrellas) if estrellas else "Todos",
+        "Palabra clave": palabra if palabra else "Ninguna",
+        "Año entre": f"{año_desde} - {año_hasta}"
+    }
 
-# --- Botón para generar informe ---
-if st.button("📄 Generar informe PDF"):
-    if not df_filtrado.empty:
-        filename = generar_informe_pdf(df_filtrado)
-        with open(filename, "rb") as f:
-            st.download_button("⬇️ Descargar Informe", f, file_name=filename)
-    else:
-        st.warning("⚠️ No hay datos filtrados para generar el informe.")
+    archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
+    st.success(f"PDF generado: {archivo_pdf}")
+    st.download_button("📥 Descargar PDF", archivo_pdf)
