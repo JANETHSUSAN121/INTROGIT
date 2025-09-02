@@ -8,62 +8,65 @@ def normalizar_columnas(df):
     df.columns = df.columns.str.strip().str.replace('\ufeff','', regex=True).str.lower()
     return df
 
-# --- Cargar datos ---
-@st.cache_data
-def cargar_datos(path):
-    df = pd.read_csv(path)
-    df = normalizar_columnas(df)
-    return df
-
-# --- Path a tu CSV ---
-df = cargar_datos("peliculas.csv")
-
 st.title("🎬 App de Películas")
 
-# --- Selección de filtros ---
-directores = st.multiselect("Selecciona Director(es):", options=df["director"].dropna().unique())
-generos = st.multiselect("Selecciona Género(s):", options=df["genero"].dropna().unique())
-estrellas = st.multiselect("Selecciona Estrellas:", options=df["estrellas"].dropna().unique())
-palabra = st.text_input("Palabra clave en título o sinopsis:")
-año_desde, año_hasta = st.slider("Rango de años:", int(df["año"].min()), int(df["año"].max()), (int(df["año"].min()), int(df["año"].max())))
+# --- Subir archivo Excel ---
+uploaded_file = st.file_uploader("Sube tu archivo Excel de películas", type=["xlsx"])
+if uploaded_file is not None:
+    df = pd.read_excel(uploaded_file)
+    df = normalizar_columnas(df)
 
-# --- Filtrar DataFrame ---
-df_filtrado = df.copy()
+    st.write(f"Datos cargados: {len(df)} filas")
 
-if directores:
-    df_filtrado = df_filtrado[df_filtrado["director"].isin(directores)]
+    # --- Selección de filtros ---
+    directores = st.multiselect("Selecciona Director(es):", options=df["director"].dropna().unique())
+    generos = st.multiselect("Selecciona Género(s):", options=df["genero"].dropna().unique())
+    estrellas = st.multiselect("Selecciona Estrellas:", options=df["estrellas"].dropna().unique())
+    palabra = st.text_input("Palabra clave en título o sinopsis:")
+    año_desde, año_hasta = st.slider(
+        "Rango de años:",
+        int(df["año"].min()), int(df["año"].max()),
+        (int(df["año"].min()), int(df["año"].max()))
+    )
 
-if generos:
-    df_filtrado = df_filtrado[df_filtrado["genero"].isin(generos)]
+    # --- Filtrar DataFrame ---
+    df_filtrado = df.copy()
 
-if estrellas:
-    df_filtrado = df_filtrado[df_filtrado["estrellas"].isin(estrellas)]
+    if directores:
+        df_filtrado = df_filtrado[df_filtrado["director"].isin(directores)]
+    if generos:
+        df_filtrado = df_filtrado[df_filtrado["genero"].isin(generos)]
+    if estrellas:
+        df_filtrado = df_filtrado[df_filtrado["estrellas"].isin(estrellas)]
+    if palabra:
+        df_filtrado = df_filtrado[
+            df_filtrado["titulo"].str.contains(palabra, case=False, na=False) |
+            df_filtrado["overview"].str.contains(palabra, case=False, na=False)
+        ]
 
-if palabra:
+    # --- Filtrar rango de años ---
     df_filtrado = df_filtrado[
-        df_filtrado["titulo"].str.contains(palabra, case=False, na=False) |
-        df_filtrado["overview"].str.contains(palabra, case=False, na=False)
+        df_filtrado["año"].notna() &
+        (df_filtrado["año"] >= año_desde) &
+        (df_filtrado["año"] <= año_hasta)
     ]
 
-# --- Filtrar rango de años de forma segura ---
-df_filtrado = df_filtrado[
-    df_filtrado["año"].notna() &
-    (df_filtrado["año"] >= año_desde) &
-    (df_filtrado["año"] <= año_hasta)
-]
+    st.write(f"Se encontraron {len(df_filtrado)} películas con los filtros aplicados.")
 
-st.write(f"Se encontraron {len(df_filtrado)} películas con los filtros aplicados.")
+    # --- Generar PDF ---
+    if st.button("Generar Informe PDF"):
+        filtros = {
+            "Director": ", ".join(directores) if directores else "Todos",
+            "Género": ", ".join(generos) if generos else "Todos",
+            "Estrellas": ", ".join(estrellas) if estrellas else "Todos",
+            "Palabra clave": palabra if palabra else "Ninguna",
+            "Año entre": f"{año_desde} - {año_hasta}"
+        }
 
-# --- Generar PDF ---
-if st.button("Generar Informe PDF"):
-    filtros = {
-        "Director": ", ".join(directores) if directores else "Todos",
-        "Género": ", ".join(generos) if generos else "Todos",
-        "Estrellas": ", ".join(estrellas) if estrellas else "Todos",
-        "Palabra clave": palabra if palabra else "Ninguna",
-        "Año entre": f"{año_desde} - {año_hasta}"
-    }
+        archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
+        st.success(f"PDF generado: {archivo_pdf}")
+        st.download_button("📥 Descargar PDF", archivo_pdf)
 
-    archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
-    st.success(f"PDF generado: {archivo_pdf}")
-    st.download_button("📥 Descargar PDF", archivo_pdf)
+else:
+    st.warning("Por favor sube un archivo Excel (.xlsx) para continuar.")
+
