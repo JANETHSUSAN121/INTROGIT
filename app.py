@@ -43,7 +43,7 @@ df = cargar_datos()
 # --- Filtros ---
 st.sidebar.header("🔎 Filtros disponibles")
 
-# Filtro de director (case-insensitive + limpieza de duplicados)
+# 🎬 Filtro de director
 if "director" in df.columns:
     directores_unicos = (
         df["director"]
@@ -59,7 +59,7 @@ if "director" in df.columns:
 else:
     director_sel = []
 
-# Filtro de estrellas
+# ⭐ Filtro de estrellas
 if "estrellas" in df.columns:
     estrellas_unicas = (
         df["estrellas"]
@@ -74,10 +74,25 @@ if "estrellas" in df.columns:
 else:
     estrellas_sel = []
 
-# Buscar palabra en sinopsis
+# 🎭 Filtro de género
+if "genero" in df.columns:
+    generos_unicos = (
+        df["genero"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .unique()
+        .tolist()
+    )
+    generos_unicos = sorted(set(generos_unicos))
+    genero_sel = st.sidebar.multiselect("🎭 Elige géneros", generos_unicos)
+else:
+    genero_sel = []
+
+# 📖 Buscar palabra en sinopsis
 palabra = st.sidebar.text_input("📖 Buscar palabra clave en sinopsis")
 
-# Rango de años
+# 📅 Rango de años
 if "Año" in df.columns:
     año_min = int(df["Año"].min())
     año_max = int(df["Año"].max())
@@ -98,6 +113,11 @@ if director_sel:
 if estrellas_sel:
     df_filtrado = df_filtrado[
         df_filtrado["estrellas"].isin(estrellas_sel)
+    ]
+
+if genero_sel:
+    df_filtrado = df_filtrado[
+        df_filtrado["genero"].isin(genero_sel)
     ]
 
 if palabra:
@@ -126,3 +146,11 @@ if not df_filtrado.empty:
                 file_name=filename,
                 mime="application/pdf"
             )
+    
+
+
+    
+    
+   
+
+    
