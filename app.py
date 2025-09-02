@@ -1,13 +1,11 @@
 import streamlit as st
 import pandas as pd
 from informe_pdf import generar_informe_pdf
-
 # --- Cargar datos ---
 @st.cache_data
 def cargar_datos():
     df = pd.read_excel("datosBI.xlsx")
-
-    # Normalización básica de columnas
+ # Normalización básica de columnas
     if "Año" in df.columns:
         df["Año"] = pd.to_numeric(df["Año"], errors="coerce")
         df = df.dropna(subset=["Año"])
