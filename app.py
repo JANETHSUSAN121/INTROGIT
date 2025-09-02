@@ -8,7 +8,8 @@ st.title("🎬 Explorador de Películas")
 st.write("Filtra películas y genera informes en PDF.")
 
 # --- Cargar archivo ---
-archivo = st.file_uploader("📂 Sube tu archivo Excel (.xlsx)", type=["xlsx"])
+xlsx_path = "datosBI.xlsx"
+df = pd.read_excel(xlsx_path)
 
 if archivo is not None:
     try:
