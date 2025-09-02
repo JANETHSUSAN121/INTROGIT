@@ -27,23 +27,50 @@ else:
 
         if "genero" in df.columns:
             # limpiar géneros con llaves u otros símbolos raros
-            df["genero"] = df["genero"].astype(str).str.replace(r"[{}]", "", regex=True).str.strip()
+            df["genero"] = (
+                df["genero"]
+                .astype(str)
+                .str.replace(r"[{}]", "", regex=True)
+                .str.strip()
+            )
 
         # --- Filtros ---
         st.title("🎬 Recomendador de Películas")
 
-        generos = st.multiselect("Elige géneros", df["genero"].dropna().unique().tolist() if "genero" in df.columns else [])
-        directores = st.multiselect("Elige directores", df["director"].dropna().unique().tolist() if "director" in df.columns else [])
+        generos = st.multiselect(
+            "Elige géneros",
+            df["genero"].dropna().unique().tolist() if "genero" in df.columns else [],
+        )
+        directores = st.multiselect(
+            "Elige directores",
+            df["director"].dropna().unique().tolist() if "director" in df.columns else [],
+        )
         palabra = st.text_input("Buscar palabra clave en sinopsis")
 
         año_min = int(df["Año"].min()) if "Año" in df.columns else 1900
         año_max = int(df["Año"].max()) if "Año" in df.columns else 2100
 
-        año_desde = st.number_input("Año desde", min_value=1900, max_value=2100, value=año_min)
-        año_hasta = st.number_input("Año hasta", min_value=1900, max_value=2100, value=año_max)
+        año_desde = st.number_input(
+            "Año desde", min_value=1900, max_value=2100, value=año_min
+        )
+        año_hasta = st.number_input(
+            "Año hasta", min_value=1900, max_value=2100, value=año_max
+        )
 
         # --- Aplicar filtros ---
         df_filtrado = df.copy()
-       
 
-      
+        # Aquí puedes seguir con tu lógica de filtrado y generación de informe
+        # Ejemplo: generar el PDF
+        if st.button("📄 Generar Informe PDF"):
+            archivo_pdf = generar_informe_pdf(df_filtrado)
+            with open(archivo_pdf, "rb") as f:
+                st.download_button(
+                    "⬇️ Descargar Informe",
+                    f,
+                    file_name=archivo_pdf,
+                    mime="application/pdf",
+                )
+
+    except Exception as e:
+        st.error(f"❌ Error al cargar o procesar el archivo xlsx: {e}")
