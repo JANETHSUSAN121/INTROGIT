@@ -1,114 +1,99 @@
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-import requests
-from io import BytesIO
-import pandas as pd
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import matplotlib.pyplot as plt
+import tempfile
+import os
 
-def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
-    doc = SimpleDocTemplate(nombre_archivo, pagesize=A4)
+def generar_informe_pdf(df, filtros):
+    archivo_pdf = "informe_peliculas.pdf"
+    doc = SimpleDocTemplate(archivo_pdf, pagesize=letter)
+    elementos = []
     styles = getSampleStyleSheet()
-    story = []
+    styles.add(ParagraphStyle(name="Titulo", fontSize=16, leading=20, spaceAfter=10, alignment=1))
+    styles.add(ParagraphStyle(name="Subtitulo", fontSize=12, leading=14, spaceAfter=6, textColor=colors.darkblue))
+    styles.add(ParagraphStyle(name="Normal", fontSize=10, leading=12))
 
-    # --- Título ---
-    story.append(Paragraph("🎬 Informe de Películas", styles["Title"]))
-    story.append(Spacer(1, 12))
+    # --- Título general ---
+    elementos.append(Paragraph("🎬 Informe de Películas", styles["Titulo"]))
+    elementos.append(Spacer(1, 12))
 
     # --- Filtros aplicados ---
-    story.append(Paragraph("<b>Filtros aplicados:</b>", styles["Heading2"]))
-    for clave, valor in filtros.items():
-        story.append(Paragraph(f"{clave}: {valor}", styles["Normal"]))
-    story.append(Spacer(1, 12))
+    filtros_texto = "<br/>".join([f"<b>{k}:</b> {v}" for k, v in filtros.items()])
+    elementos.append(Paragraph("📌 Filtros aplicados:<br/>" + filtros_texto, styles["Normal"]))
+    elementos.append(Spacer(1, 12))
 
-    # --- Películas ---
-    story.append(Paragraph("<b>Películas encontradas:</b>", styles["Heading2"]))
-
+    # --- Recorrer películas ---
     for _, row in df.iterrows():
-        elementos_pelicula = []
+        titulo = row.get("titulo", "Desconocido")
+        año = row.get("año", "N/A")
+        director = row.get("director", "N/A")
+        genero = row.get("genero", "N/A")
+        estrellas = row.get("estrellas", "N/A")
+        score = row.get("score", "N/A")
+        productora = row.get("productora", "N/A")
+        sinopsis = row.get("sinopsis", "Sin descripción disponible.")
+        budget = row.get("budget", 0)
+        revenue = row.get("revenue", 0)
+        roi = row.get("roi", 0)
+        poster_url = row.get("poster_url", None)
 
-        # Imagen del póster (si existe)
-        if "poster_url" in row and pd.notna(row["poster_url"]):
-            try:
-                response = requests.get(row["poster_url"], timeout=5)
-                if response.status_code == 200:
-                    img_data = BytesIO(response.content)
-                    img = Image(img_data, width=100, height=150)  # 📌 tamaño del póster
-                    elementos_pelicula.append(img)
-            except Exception:
-                pass
+        # --- Título de la película ---
+        elementos.append(Paragraph(f"🎞️ <b>{titulo}</b> ({año})", styles["Subtitulo"]))
 
-        # Información de la película
-        info = []
-        campos = {
-            "titulo": "Título",
-            "año": "Año",
-            "director": "Director",
-            "genero": "Género",
-            "estrellas": "Estrellas",
-            "budget": "Presupuesto",
-            "revenue": "Ingresos",
-            "roi": "ROI (%)",
-            "score": "Score",
-            "productora": "Productora",
-            "sinopsis": "Sinopsis"
-        }
-
-        for campo, etiqueta in campos.items():
-            if campo in row and pd.notna(row[campo]):
-                valor = row[campo]
-
-                # Formatear budget y revenue con separador de miles y $
-                if campo in ["budget", "revenue"]:
-                    try:
-                        valor = f"${int(valor):,}".replace(",", ".")
-                    except:
-                        pass
-
-                # ROI con %
-                if campo == "roi":
-                    valor = f"{valor} %"
-
-                info.append(f"<b>{etiqueta}:</b> {valor}")
-
-        texto = Paragraph("<br/>".join(info), styles["Normal"])
-
-        # Tabla con poster + texto
-        fila = [elementos_pelicula[0] if elementos_pelicula else "", texto]
-        tabla = Table([fila], colWidths=[110, 350])
+        # --- Datos principales ---
+        data = [
+            ["Director", director],
+            ["Género", genero],
+            ["Estrellas", estrellas],
+            ["Productora", productora],
+            ["Score", score],
+            ["Presupuesto", f"${budget:,.0f}"],
+            ["Ingresos", f"${revenue:,.0f}"],
+            ["ROI", f"{roi:.2f}%"]
+        ]
+        tabla = Table(data, colWidths=[100, 400])
         tabla.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("BOX", (0, 0), (-1, -1), 0.25, colors.grey),
-            ("INNERPADDING", (0, 0), (-1, -1), 6),
+            ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+            ("BOX", (0,0), (-1,-1), 0.5, colors.black),
+            ("INNERGRID", (0,0), (-1,-1), 0.25, colors.grey),
         ]))
-        story.append(tabla)
-        story.append(Spacer(1, 12))
+        elementos.append(tabla)
+        elementos.append(Spacer(1, 8))
 
-        # 📊 Gráfico Budget vs Revenue con ROI
-        if "budget" in row and "revenue" in row and pd.notna(row["budget"]) and pd.notna(row["revenue"]):
-            fig, ax = plt.subplots(figsize=(4, 3))
-            valores = [row["budget"], row["revenue"]]
-            etiquetas = ["Presupuesto", "Ingresos"]
-            colores = ["#FF9999", "#99FF99"]
-
-            ax.bar(etiquetas, valores, color=colores)
+        # --- Gráfico Budget vs Revenue ---
+        if budget > 0 or revenue > 0:
+            fig, ax = plt.subplots(figsize=(4,2))
+            ax.bar(["Budget", "Revenue"], [budget, revenue], color=["#FF6F61", "#6B8E23"])
             ax.set_ylabel("USD")
-            ax.set_title("Budget vs Revenue")
-
-            # Mostrar ROI al costado
-            if "roi" in row and pd.notna(row["roi"]):
-                ax.text(1, max(valores)*0.9, f"ROI: {row['roi']}%", ha="center", fontsize=10, fontweight="bold")
-
-            buf = BytesIO()
+            ax.set_title("Comparación Budget vs Revenue")
             plt.tight_layout()
-            plt.savefig(buf, format="png")
+
+            temp_chart = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            plt.savefig(temp_chart.name, format="png")
             plt.close(fig)
-            buf.seek(0)
+            elementos.append(Image(temp_chart.name, width=300, height=150))
+            elementos.append(Spacer(1, 8))
 
-            story.append(Image(buf, width=250, height=200))
-            story.append(Spacer(1, 20))
+        # --- Sinopsis ---
+        elementos.append(Paragraph("<b>Sinopsis:</b><br/>" + sinopsis, styles["Normal"]))
+        elementos.append(Spacer(1, 15))
 
-    # --- Guardar PDF ---
-    doc.build(story)
-    return nombre_archivo
+        # --- Póster si existe ---
+        if poster_url and isinstance(poster_url, str) and poster_url.startswith("http"):
+            try:
+                from urllib.request import urlopen
+                import io
+                img_data = io.BytesIO(urlopen(poster_url).read())
+                elementos.append(Image(img_data, width=150, height=200))
+                elementos.append(Spacer(1, 15))
+            except:
+                elementos.append(Paragraph("⚠️ No se pudo cargar el póster.", styles["Normal"]))
+
+        elementos.append(Spacer(1, 20))
+
+    doc.build(elementos)
+    return archivo_pdf
+  
+
