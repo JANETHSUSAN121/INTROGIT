@@ -5,6 +5,7 @@ from reportlab.lib import colors
 import requests
 from io import BytesIO
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
     doc = SimpleDocTemplate(nombre_archivo, pagesize=A4)
@@ -40,14 +41,15 @@ def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
 
         # Información de la película
         info = []
-
         campos = {
             "titulo": "Título",
             "año": "Año",
             "director": "Director",
             "genero": "Género",
             "estrellas": "Estrellas",
-            "roi": "ROI",
+            "budget": "Presupuesto",
+            "revenue": "Ingresos",
+            "roi": "ROI (%)",
             "score": "Score",
             "productora": "Productora",
             "sinopsis": "Sinopsis"
@@ -55,11 +57,24 @@ def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
 
         for campo, etiqueta in campos.items():
             if campo in row and pd.notna(row[campo]):
-                info.append(f"<b>{etiqueta}:</b> {row[campo]}")
+                valor = row[campo]
+
+                # Formatear budget y revenue con separador de miles y $
+                if campo in ["budget", "revenue"]:
+                    try:
+                        valor = f"${int(valor):,}".replace(",", ".")
+                    except:
+                        pass
+
+                # ROI con %
+                if campo == "roi":
+                    valor = f"{valor} %"
+
+                info.append(f"<b>{etiqueta}:</b> {valor}")
 
         texto = Paragraph("<br/>".join(info), styles["Normal"])
 
-        # Colocar imagen + texto en una fila
+        # Tabla con poster + texto
         fila = [elementos_pelicula[0] if elementos_pelicula else "", texto]
         tabla = Table([fila], colWidths=[110, 350])
         tabla.setStyle(TableStyle([
@@ -69,6 +84,30 @@ def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
         ]))
         story.append(tabla)
         story.append(Spacer(1, 12))
+
+        # 📊 Gráfico Budget vs Revenue con ROI
+        if "budget" in row and "revenue" in row and pd.notna(row["budget"]) and pd.notna(row["revenue"]):
+            fig, ax = plt.subplots(figsize=(4, 3))
+            valores = [row["budget"], row["revenue"]]
+            etiquetas = ["Presupuesto", "Ingresos"]
+            colores = ["#FF9999", "#99FF99"]
+
+            ax.bar(etiquetas, valores, color=colores)
+            ax.set_ylabel("USD")
+            ax.set_title("Budget vs Revenue")
+
+            # Mostrar ROI al costado
+            if "roi" in row and pd.notna(row["roi"]):
+                ax.text(1, max(valores)*0.9, f"ROI: {row['roi']}%", ha="center", fontsize=10, fontweight="bold")
+
+            buf = BytesIO()
+            plt.tight_layout()
+            plt.savefig(buf, format="png")
+            plt.close(fig)
+            buf.seek(0)
+
+            story.append(Image(buf, width=250, height=200))
+            story.append(Spacer(1, 20))
 
     # --- Guardar PDF ---
     doc.build(story)
