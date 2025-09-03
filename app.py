@@ -12,16 +12,29 @@ st.title("🎬 Películas - Informe PDF")
 def cargar_datos():
     df = pd.read_excel("datosBI.xlsx")
     df.columns = df.columns.str.strip().str.lower()  # 🔑 normalizar nombres
+    
     # Normalizar valores de texto para evitar duplicados raros
     for col in ["director", "genero", "estrellas", "titulo"]:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip().str.title()
+    
     return df
 
 df = cargar_datos()
 
 # --- Opciones de filtrado ---
 st.sidebar.header("Filtros")
+
+# Checkbox para eliminar duplicados
+eliminar_dupl = st.sidebar.checkbox("Eliminar duplicados por Título + Año", value=True)
+
+# Aplicar eliminación de duplicados si corresponde
+if eliminar_dupl and "titulo" in df.columns and "año" in df.columns:
+    df = df.drop_duplicates(subset=["titulo", "año"])
+elif eliminar_dupl:
+    df = df.drop_duplicates()
+
+# Filtros principales
 director_sel = st.sidebar.multiselect("Director", options=sorted(df["director"].dropna().unique()))
 genero_sel = st.sidebar.multiselect("Género", options=sorted(df["genero"].dropna().unique()))
 estrellas_sel = st.sidebar.multiselect("Estrellas", options=sorted(df["estrellas"].dropna().unique()))
@@ -57,7 +70,8 @@ if st.button("📄 Generar Informe PDF"):
         "Género": ", ".join(genero_sel) if genero_sel else "Todos",
         "Estrellas": ", ".join(estrellas_sel) if estrellas_sel else "Todos",
         "Palabra clave": palabra if palabra else "Ninguna",
-        "Año entre": f"{año_desde} - {año_hasta}"
+        "Año entre": f"{año_desde} - {año_hasta}",
+        "Eliminar duplicados": "Sí" if eliminar_dupl else "No"
     }
     archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
     with open(archivo_pdf, "rb") as f:
