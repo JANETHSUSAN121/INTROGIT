@@ -1,21 +1,15 @@
 import streamlit as st
 import pandas as pd
+import os
 
-# -------------------------
-# Configuración de la app
-# -------------------------
-st.set_page_config(page_title="Diccionario de Profesiones", layout="wide")
-st.title("Diccionario de Profesiones en Jeroglíficos 🏺")
-st.markdown("Selecciona una profesión para ver su jeroglífico, transliteración y descripción.")
+# Obtener la ruta del archivo actual
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+EXCEL_PATH = os.path.join(BASE_DIR, "profesiones_jeroglificos.xlsx")
 
-# -------------------------
-# Cargar Excel local
-# -------------------------
 @st.cache_data
 def cargar_datos():
     try:
-        # Asegúrate de que el Excel esté en la misma carpeta que este .py
-        df = pd.read_excel("profesiones_jeroglificos.xlsx")
+        df = pd.read_excel(EXCEL_PATH)
         return df
     except Exception as e:
         st.error(f"No se pudo cargar el archivo Excel: {e}")
@@ -24,17 +18,18 @@ def cargar_datos():
 df = cargar_datos()
 
 # -------------------------
-# Inicializar selección
+# Configuración de la app
 # -------------------------
+st.set_page_config(page_title="Diccionario de Profesiones", layout="wide")
+st.title("Diccionario de Profesiones en Jeroglíficos 🏺")
+st.markdown("Selecciona una profesión para ver su jeroglífico, transliteración y descripción.")
+
+# Inicializar selección
 if "seleccion" not in st.session_state:
     st.session_state["seleccion"] = None
 
-# -------------------------
 # Layout: galería y detalles
-# -------------------------
 galeria_col, detalles_col = st.columns([3, 2])
-
-# Galería de tarjetas (2 tarjetas por fila)
 num_cols = 2
 tarjetas = galeria_col.columns(num_cols)
 
@@ -46,9 +41,6 @@ for idx, fila in df.iterrows():
         if st.button(fila["profesion"], key=idx):
             st.session_state["seleccion"] = idx
 
-# -------------------------
-# Mostrar detalles de la profesión seleccionada
-# -------------------------
 if st.session_state["seleccion"] is not None and not df.empty:
     fila = df.loc[st.session_state["seleccion"]]
     detalles_col.subheader(f"{fila['profesion']}")
