@@ -1,17 +1,20 @@
 import streamlit as st
 import pandas as pd
 
-# Mostrar ruta actual y archivos presentes (solo para debug)
-st.write("Ruta actual:", os.getcwd())
-st.write("Archivos en la carpeta:", os.listdir())
+# -------------------------
+# Configuración de la app
+# -------------------------
+st.set_page_config(page_title="Diccionario de Profesiones", layout="wide")
+st.title("Diccionario de Profesiones en Jeroglíficos 🏺")
+st.markdown("Selecciona una profesión para ver su jeroglífico, transliteración y descripción.")
 
-
-
-
-# Cargar datos desde el Excel local
+# -------------------------
+# Cargar Excel local
+# -------------------------
 @st.cache_data
 def cargar_datos():
     try:
+        # Asegúrate de que el Excel esté en la misma carpeta que este .py
         df = pd.read_excel("profesiones_jeroglificos.xlsx")
         return df
     except Exception as e:
@@ -20,19 +23,18 @@ def cargar_datos():
 
 df = cargar_datos()
 
-# Configuración de la página
-st.set_page_config(page_title="Diccionario de Profesiones", layout="wide")
-st.title("Diccionario de Profesiones en Jeroglíficos 🏺")
-st.markdown("Selecciona una profesión para ver su jeroglífico, transliteración y descripción.")
-
+# -------------------------
 # Inicializar selección
+# -------------------------
 if "seleccion" not in st.session_state:
     st.session_state["seleccion"] = None
 
-# Crear columnas: galería y detalles
+# -------------------------
+# Layout: galería y detalles
+# -------------------------
 galeria_col, detalles_col = st.columns([3, 2])
 
-# Galería de tarjetas (2 por fila)
+# Galería de tarjetas (2 tarjetas por fila)
 num_cols = 2
 tarjetas = galeria_col.columns(num_cols)
 
@@ -44,7 +46,9 @@ for idx, fila in df.iterrows():
         if st.button(fila["profesion"], key=idx):
             st.session_state["seleccion"] = idx
 
+# -------------------------
 # Mostrar detalles de la profesión seleccionada
+# -------------------------
 if st.session_state["seleccion"] is not None and not df.empty:
     fila = df.loc[st.session_state["seleccion"]]
     detalles_col.subheader(f"{fila['profesion']}")
@@ -53,4 +57,3 @@ if st.session_state["seleccion"] is not None and not df.empty:
     detalles_col.markdown(f"**Descripción:** {fila['descripcion']}")
     if "Imagen" in df.columns and pd.notna(fila["Imagen"]):
         detalles_col.image(fila["Imagen"], use_column_width=True)
-     
