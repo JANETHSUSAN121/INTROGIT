@@ -16,7 +16,7 @@ df = cargar_datos()
 
 # --- Opciones de filtrado ---
 st.sidebar.header("Filtros")
-director_sel = st.sidebar.multiselect("Director", options=df["director"].dropna().unique())
+director_sel = st.sidebar.multiselect("Director", options=df["Director"].dropna().unique())
 genero_sel = st.sidebar.multiselect("Género", options=df["genero"].dropna().unique())
 estrellas_sel = st.sidebar.multiselect("Estrellas", options=df["estrellas"].dropna().unique())
 año_desde, año_hasta = st.sidebar.slider("Año", int(df["Año"].min()), int(df["Año"].max()), (int(df["Año"].min()), int(df["Año"].max())))
