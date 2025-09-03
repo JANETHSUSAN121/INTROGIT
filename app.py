@@ -76,3 +76,4 @@ if st.button("📄 Generar Informe PDF"):
     archivo_pdf = generar_informe_pdf(df_filtrado, filtros)
     with open(archivo_pdf, "rb") as f:
         st.download_button("⬇️ Descargar PDF", f, file_name=archivo_pdf)
+
