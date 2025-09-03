@@ -56,7 +56,7 @@ if st.session_state["seleccion"] is not None and not df.empty:
     
     # Jeroglífico grande y centrado
     detalles_col.markdown(
-        f"<p style='font-size:60px; text-align:center'>{fila['jeroglifico']}</p>",
+        f"<p style='font-size:80px; text-align:center'>{fila['jeroglifico']}</p>",
         unsafe_allow_html=True
     )
     
