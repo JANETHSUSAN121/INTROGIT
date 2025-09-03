@@ -1,148 +1,61 @@
-import pandas as pd
-import matplotlib.pyplot as plt
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageBreak
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.enums import TA_LEFT
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
 import requests
-import os
-import shutil
 from io import BytesIO
+import pandas as pd
 
-TEMP_DIR = "temp_posters"
-
-def generar_informe_pdf(df_filtrado, filtros=None):
-    # --- Preparar carpeta temporal ---
-    os.makedirs(TEMP_DIR, exist_ok=True)
-
-    # --- Normalizar columnas ---
-    df_filtrado = df_filtrado.copy()
-    df_filtrado.columns = df_filtrado.columns.str.strip().str.replace('\ufeff','', regex=True)
-
-    # --- Asegurar columna 'Año' ---
-    if "Año" not in df_filtrado.columns:
-        df_filtrado["Año"] = pd.NA
-    df_filtrado["Año"] = pd.to_numeric(df_filtrado["Año"], errors="coerce")
-
-    # --- Limpiar columna 'genero' de llaves y espacios ---
-    if "genero" in df_filtrado.columns:
-        df_filtrado["genero"] = (
-            df_filtrado["genero"]
-            .astype(str)
-            .str.strip()     # quita espacios al inicio y final
-            .str.strip("{}") # quita cualquier { o } al inicio o final
-        )
-
-    # --- Eliminar duplicados ---
-    df_filtrado = df_filtrado.drop_duplicates(subset=["titulo","director","Año"], keep="first")
-
-    # --- Crear documento PDF ---
-    filename = "Informe_Peliculas.pdf"
-    doc = SimpleDocTemplate(filename, pagesize=A4)
+def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
+    doc = SimpleDocTemplate(nombre_archivo, pagesize=A4)
+    styles = getSampleStyleSheet()
     story = []
 
-    # --- Estilos ---
-    styles = getSampleStyleSheet()
-    estilo_titulo = styles["Title"]
-    estilo_subtitulo = styles["Heading2"]
-    estilo_texto = styles["Normal"]
-    estilo_numeros = ParagraphStyle(
-        "Numeros", parent=styles["Normal"], fontSize=12, leading=16, spaceAfter=8, alignment=TA_LEFT
-    )
-
-    # --- Título del informe ---
-    story.append(Paragraph("📊 Informe de Películas - Top Filtradas", estilo_titulo))
-    story.append(Spacer(1, 20))
+    # --- Título ---
+    story.append(Paragraph("🎬 Informe de Películas", styles["Title"]))
+    story.append(Spacer(1, 12))
 
     # --- Filtros aplicados ---
-    if filtros:
-        story.append(Paragraph("Filtros aplicados:", estilo_subtitulo))
-        for clave, val in filtros.items():
-            story.append(Paragraph(f"<b>{clave}:</b> {val if val else 'Todos'}", estilo_texto))
-            story.append(Spacer(1,5))
-        story.append(Spacer(1,15))
+    story.append(Paragraph("<b>Filtros aplicados:</b>", styles["Heading2"]))
+    for clave, valor in filtros.items():
+        story.append(Paragraph(f"{clave}: {valor}", styles["Normal"]))
+    story.append(Spacer(1, 12))
 
-    # --- Detalle de cada película ---
-    for idx, row in df_filtrado.iterrows():
-        story.append(Paragraph(f"🎬 {row.get('titulo','Sin título')}", estilo_subtitulo))
-        story.append(Paragraph(f"Director: {row.get('director','N/A')} | Año: {row.get('Año','N/A')}", estilo_texto))
-        story.append(Paragraph(f"Género: {row.get('genero','N/A')} | Estrellas: {row.get('estrellas','N/A')}", estilo_texto))
-        story.append(Spacer(1,8))
+    # --- Películas ---
+    story.append(Paragraph("<b>Películas encontradas:</b>", styles["Heading2"]))
 
-        # --- Presupuesto, ingresos y ROI ---
-        budget = row.get("budget",0) or 0
-        revenue = row.get("revenue",0) or 0
-        roi = (revenue-budget)/budget if budget>0 else None
-        texto_numeros = f"<b>Presupuesto:</b> ${budget:,.0f}<br/><b>Ingresos:</b> ${revenue:,.0f}<br/><b>ROI:</b> {roi*100:.2f}%" if roi else "❌ ROI no disponible"
-        story.append(Paragraph(texto_numeros, estilo_numeros))
-        story.append(Spacer(1,5))
+    for _, row in df.iterrows():
+        elementos_pelicula = []
 
-        # --- Poster JPG ---
-        poster_url = row.get("Poster_URL")
-        img_path = None
-        if pd.notna(poster_url):
+        # Imagen del póster (si existe)
+        if "poster_url" in row and pd.notna(row["poster_url"]):
             try:
-                r = requests.get(poster_url, timeout=5)
-                if r.status_code == 200:
-                    img_path = os.path.join(TEMP_DIR, f"poster_{idx}.jpg")
-                    with open(img_path, "wb") as f:
-                        f.write(r.content)
-            except:
+                response = requests.get(row["poster_url"], timeout=5)
+                if response.status_code == 200:
+                    img_data = BytesIO(response.content)
+                    img = Image(img_data, width=100, height=150)  # 📌 tamaño del póster
+                    elementos_pelicula.append(img)
+            except Exception:
                 pass
-        if img_path and os.path.exists(img_path):
-            story.append(Image(img_path, width=200, height=300))
-            story.append(Spacer(1,5))
 
-        # --- Gráfico presupuesto vs ingresos ---
-        plt.figure(figsize=(4,3))
-        if roi:
-            plt.bar(["Presupuesto","Ingresos","ROI (%)"], [budget,revenue,roi*100])
-        else:
-            plt.bar(["Presupuesto","Ingresos"], [budget,revenue])
-        plt.title("Presupuesto vs Ingresos y ROI (%)")
-        img_buf = BytesIO()
-        plt.savefig(img_buf, format="png")
-        plt.close()
-        img_buf.seek(0)
-        story.append(Image(img_buf, width=250, height=180))
-        story.append(Spacer(1,10))
+        # Información de la película
+        info = []
+        for campo in ["titulo", "año", "director", "genero", "estrellas"]:
+            if campo in row and pd.notna(row[campo]):
+                info.append(f"<b>{campo.capitalize()}:</b> {row[campo]}")
+        texto = Paragraph("<br/>".join(info), styles["Normal"])
 
-        # --- Sinopsis ---
-        story.append(Paragraph(f"📖 Sinopsis: {row.get('overview','No disponible')}", estilo_texto))
-        story.append(PageBreak())
-
-    # --- Tabla resumen ---
-    if not df_filtrado.empty:
-        data = [["Título","Director","Año","Género","Score"]]
-        for _, row in df_filtrado.iterrows():
-            data.append([
-                row.get("titulo",""),
-                row.get("director",""),
-                row.get("Año",""),
-                row.get("genero",""),
-                row.get("score","")
-            ])
-        table = Table(data, repeatRows=1)
-        table.setStyle(TableStyle([
-            ("BACKGROUND",(0,0),(-1,0),colors.lightblue),
-            ("TEXTCOLOR",(0,0),(-1,0),colors.whitesmoke),
-            ("ALIGN",(0,0),(-1,-1),"CENTER"),
-            ("GRID",(0,0),(-1,-1),0.5,colors.grey)
+        # Colocar imagen + texto en una fila
+        fila = [elementos_pelicula[0] if elementos_pelicula else "", texto]
+        tabla = Table([fila], colWidths=[110, 350])
+        tabla.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("BOX", (0, 0), (-1, -1), 0.25, colors.grey),
+            ("INNERPADDING", (0, 0), (-1, -1), 6),
         ]))
-        story.append(table)
-    else:
-        story.append(Paragraph("No se encontraron películas con los filtros aplicados.", styles["Normal"]))
+        story.append(tabla)
+        story.append(Spacer(1, 12))
 
-    # --- Construir PDF ---
+    # --- Guardar PDF ---
     doc.build(story)
-
-    # --- Limpiar carpeta temporal ---
-    shutil.rmtree(TEMP_DIR, ignore_errors=True)
-
-    return filename
-
-
-
-
-
+    return nombre_archivo
