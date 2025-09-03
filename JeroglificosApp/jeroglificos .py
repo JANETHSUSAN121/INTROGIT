@@ -1,6 +1,13 @@
 import streamlit as st
 import pandas as pd
 
+# Mostrar ruta actual y archivos presentes (solo para debug)
+st.write("Ruta actual:", os.getcwd())
+st.write("Archivos en la carpeta:", os.listdir())
+
+
+
+
 # Cargar datos desde el Excel local
 @st.cache_data
 def cargar_datos():
