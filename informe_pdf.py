@@ -1,14 +1,16 @@
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, KeepTogether
 import matplotlib.pyplot as plt
 import tempfile
+import requests
+from io import BytesIO
 
 def generar_informe_pdf(df, filtros):
     # Crear archivo temporal
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
-    doc = SimpleDocTemplate(tmp.name, pagesize=A4)
+    doc = SimpleDocTemplate(tmp.name, pagesize=A4, rightMargin=30,leftMargin=30, topMargin=30,bottomMargin=18)
     elementos = []
 
     # Estilos
@@ -16,7 +18,7 @@ def generar_informe_pdf(df, filtros):
     styles["Normal"].fontSize = 10
     styles["Normal"].leading = 12
 
-    # --- Cabecera con filtros ---
+    # Cabecera con filtros
     elementos.append(Paragraph("🎬 Informe de Películas", styles["Title"]))
     elementos.append(Spacer(1, 12))
     filtros_texto = "<br/>".join([f"<b>{k}:</b> {v}" for k,v in filtros.items()])
@@ -24,9 +26,11 @@ def generar_informe_pdf(df, filtros):
     elementos.append(Spacer(1, 12))
 
     for idx, row in df.iterrows():
+        bloque = []
+
         # Título
-        elementos.append(Paragraph(f"<b>{row['titulo']}</b> ({row['año']})", styles["Heading2"]))
-        elementos.append(Spacer(1, 6))
+        bloque.append(Paragraph(f"<b>{row['titulo']}</b> ({row['año']})", styles["Heading2"]))
+        bloque.append(Spacer(1, 6))
 
         # Tabla de detalles
         tabla_data = [
@@ -37,42 +41,64 @@ def generar_informe_pdf(df, filtros):
         ]
         tabla = Table(tabla_data, colWidths=[80, 400])
         tabla.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
             ('ALIGN',(0,0),(-1,-1),'LEFT'),
             ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
             ('FONTSIZE', (0,0), (-1,-1), 10),
             ('BOTTOMPADDING', (0,0), (-1,-1), 6),
             ('GRID', (0,0), (-1,-1), 0.5, colors.black),
         ]))
-        elementos.append(tabla)
-        elementos.append(Spacer(1, 6))
+        bloque.append(tabla)
+        bloque.append(Spacer(1, 6))
+
+        # Poster si existe
+        if "poster_url" in row and row["poster_url"]:
+            try:
+                response = requests.get(row["poster_url"])
+                if response.status_code == 200:
+                    img_temp = BytesIO(response.content)
+                    bloque.append(Image(img_temp, width=120, height=180))
+                    bloque.append(Spacer(1,6))
+            except:
+                pass
 
         # Gráfico Budget vs Revenue
-        if "budget" in row and "revenue" in row and row["budget"] > 0 and row["revenue"] >= 0:
+        if "budget" in row and "revenue" in row and row["budget"] > 0:
             fig, ax = plt.subplots(figsize=(4,2))
             ax.bar(["Budget", "Revenue"], [row["budget"], row["revenue"]], color=["orange","green"])
             ax.set_ylabel("USD")
             ax.set_title("Budget vs Revenue")
             plt.tight_layout()
 
-            # Guardar en archivo temporal
             tmp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
             fig.savefig(tmp_img.name)
             plt.close(fig)
-            elementos.append(Image(tmp_img.name, width=300, height=150))
-            elementos.append(Spacer(1, 6))
+            bloque.append(Image(tmp_img.name, width=300, height=150))
+            bloque.append(Spacer(1,6))
 
-        # Sinopsis
-        if "overview" in row:
-            elementos.append(Paragraph(f"<b>Sinopsis:</b> {row['overview']}", styles["Normal"]))
-            elementos.append(Spacer(1,12))
+            # Valores exactos debajo del gráfico
+            bloque.append(Paragraph(f"<b>Budget:</b> ${row['budget']:,} &nbsp;&nbsp; <b>Revenue:</b> ${row['revenue']:,}", styles["Normal"]))
+            bloque.append(Spacer(1,6))
 
+        # Sinopsis en recuadro
+        if "overview" in row and row["overview"]:
+            tabla_sinopsis = Table([[Paragraph(row["overview"], styles["Normal"])]], colWidths=[480])
+            tabla_sinopsis.setStyle(TableStyle([
+                ('BOX', (0,0), (-1,-1), 1, colors.black),
+                ('BACKGROUND',(0,0),(-1,-1),colors.whitesmoke),
+                ('VALIGN',(0,0),(-1,-1),'TOP'),
+                ('LEFTPADDING',(0,0),(-1,-1),6),
+                ('RIGHTPADDING',(0,0),(-1,-1),6),
+                ('TOPPADDING',(0,0),(-1,-1),4),
+                ('BOTTOMPADDING',(0,0),(-1,-1),4),
+            ]))
+            bloque.append(tabla_sinopsis)
+            bloque.append(Spacer(1,12))
+
+        elementos.append(KeepTogether(bloque))
         elementos.append(Spacer(1,12))
-    
+
     # Generar PDF
     doc.build(elementos)
     return tmp.name
-  
   
    
