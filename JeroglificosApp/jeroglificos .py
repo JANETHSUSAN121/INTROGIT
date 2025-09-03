@@ -37,7 +37,7 @@ for idx, fila in df.iterrows():
     col = tarjetas[idx % num_cols]
     with col:
         if "Imagen" in df.columns and pd.notna(fila["Imagen"]):
-            st.image(fila["Imagen"], width=150)
+            st.image(fila["Imagen"], width=250)
         if st.button(fila["profesion"], key=idx):
             st.session_state["seleccion"] = idx
 
