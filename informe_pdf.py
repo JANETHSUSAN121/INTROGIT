@@ -40,9 +40,23 @@ def generar_informe_pdf(df, filtros, nombre_archivo="informe_peliculas.pdf"):
 
         # Información de la película
         info = []
-        for campo in ["titulo", "año", "director", "genero", "estrellas"]:
+
+        campos = {
+            "titulo": "Título",
+            "año": "Año",
+            "director": "Director",
+            "genero": "Género",
+            "estrellas": "Estrellas",
+            "roi": "ROI",
+            "score": "Score",
+            "productora": "Productora",
+            "sinopsis": "Sinopsis"
+        }
+
+        for campo, etiqueta in campos.items():
             if campo in row and pd.notna(row[campo]):
-                info.append(f"<b>{campo.capitalize()}:</b> {row[campo]}")
+                info.append(f"<b>{etiqueta}:</b> {row[campo]}")
+
         texto = Paragraph("<br/>".join(info), styles["Normal"])
 
         # Colocar imagen + texto en una fila
