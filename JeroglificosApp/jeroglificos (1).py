@@ -4,7 +4,7 @@ import requests
 import io
 
 # URL raw de tu Excel en GitHub
-url = "https://github.com/JANETHSUSAN121/INTROGIT/raw/main/profesiones_jeroglificos.xlsx"
+url = "https://raw.githubusercontent.com/JANETHSUSAN121/INTROGIT/main/profesiones_jeroglificos.xlsx"
 
 # Función para cargar los datos con caching
 @st.cache_data
