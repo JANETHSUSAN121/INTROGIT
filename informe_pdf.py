@@ -146,4 +146,3 @@ def generar_informe_pdf(df_filtrado, filtros=None):
 
 
 
-ChatGPT puede cometer errores. Comprueba la información importante.
