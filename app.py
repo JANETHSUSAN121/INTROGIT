@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from informe_pdf import generar_informe_pdf
 
+# --- Configuración de la página ---
 st.set_page_config(page_title="Informe de Películas", layout="wide")
 
 st.title("🎬 Películas - Informe PDF")
@@ -11,15 +12,19 @@ st.title("🎬 Películas - Informe PDF")
 def cargar_datos():
     df = pd.read_excel("datosBI.xlsx")
     df.columns = df.columns.str.strip().str.lower()  # 🔑 normalizar nombres
+    # Normalizar valores de texto para evitar duplicados raros
+    for col in ["director", "genero", "estrellas", "titulo"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip().str.title()
     return df
 
 df = cargar_datos()
 
 # --- Opciones de filtrado ---
 st.sidebar.header("Filtros")
-director_sel = st.sidebar.multiselect("Director", options=df["director"].dropna().unique())
-genero_sel = st.sidebar.multiselect("Género", options=df["genero"].dropna().unique())
-estrellas_sel = st.sidebar.multiselect("Estrellas", options=df["estrellas"].dropna().unique())
+director_sel = st.sidebar.multiselect("Director", options=sorted(df["director"].dropna().unique()))
+genero_sel = st.sidebar.multiselect("Género", options=sorted(df["genero"].dropna().unique()))
+estrellas_sel = st.sidebar.multiselect("Estrellas", options=sorted(df["estrellas"].dropna().unique()))
 año_desde, año_hasta = st.sidebar.slider(
     "Año", 
     int(df["año"].min()), 
@@ -42,6 +47,7 @@ df_filtrado = df_filtrado[(df_filtrado["año"] >= año_desde) & (df_filtrado["a�
 
 # --- Mostrar DataFrame filtrado ---
 st.subheader("Películas disponibles")
+st.write(f"Se encontraron **{len(df_filtrado)}** películas con los filtros seleccionados.")
 st.dataframe(df_filtrado.reset_index(drop=True))
 
 # --- Botón para generar PDF ---
